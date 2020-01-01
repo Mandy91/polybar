@@ -9,13 +9,16 @@ description: |
 
 base: core18
 grade: stable
-confinement: strict
+confinement: classic
 
 
 
 apps:
-  polybar:
-    command: polybar
+  polybar-git:
+    command: usr/local/bin/polybar
+    environment:
+      LD_LIBRARY_PATH: "$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio"
+      XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR
     plugs: 
       - network
       - network-bind
@@ -26,6 +29,8 @@ apps:
       - desktop
       - desktop-legacy
       - removable-media
+      - x11
+      - desktop
 
 
 parts:
@@ -60,6 +65,54 @@ parts:
       - libmpdclient-dev
       - libcurl4-openssl-dev
       - libnl-genl-3-dev
+    stage-packages:
+      - libasn1-8-heimdal
+      - libasound2
+      - libasyncns0
+      - libcairo2
+      - libcurl4
+      - libflac8
+      - libfontconfig1
+      - libfreetype6
+      - libgssapi3-heimdal
+      - libhcrypto4-heimdal
+      - libheimbase1-heimdal
+      - libheimntlm0-heimdal
+      - libhx509-5-heimdal
+      - libkrb5-26-heimdal
+      - libldap-2.4-2
+      - libmpdclient2
+      - libnghttp2-14
+      - libogg0
+      - libpixman-1-0
+      - libpng16-16
+      - libpsl5
+      - libpulse0
+      - libroken18-heimdal
+      - librtmp1
+      - libsasl2-2
+      - libsndfile1
+      - libvorbis0a
+      - libvorbisenc2
+      - libwind0-heimdal
+      - libx11-6
+      - libxau6
+      - libxcb-composite0
+      - libxcb-cursor0
+      - libxcb-ewmh2
+      - libxcb-icccm4
+      - libxcb-image0
+      - libxcb-randr0
+      - libxcb-render-util0
+      - libxcb-render0
+      - libxcb-shm0
+      - libxcb-util1
+      - libxcb-xkb1
+      - libxcb-xrm0
+      - libxcb1
+      - libxdmcp6
+      - libxext6
+      - libxrender1
     override-pull: |
       snapcraftctl pull
       last_committed_tag="$(git tag -l | grep -v v | sort -rV | head -n1)"
@@ -75,6 +128,7 @@ parts:
         -DENABLE_NETWORK:BOOL="ON" \
         -DENABLE_CURL:BOOL="ON" \
         -DBUILD_IPC_MSG:BOOL="ON" \
-        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=$SNAPCRAFT_PART_INSTALL/usr/local
       make
       make install
