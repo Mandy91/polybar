@@ -8,16 +8,21 @@ description: |
   store.
 
 base: core18
-grade: stable
-confinement: classic
+grade: devel
+confinement: devmode
 
+# plugs:
+#   polybar-config:
+#     interface: personal-files
+#     read:
+#       - $HOME/.config/polybar
 
 
 apps:
   polybar-git:
     command: usr/local/bin/polybar
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio"
+      LD_LIBRARY_PATH: "$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/pulseaudio:$LD_LIBRARY_PATH"
       XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR
     plugs: 
       - network
@@ -30,7 +35,29 @@ apps:
       - desktop-legacy
       - removable-media
       - x11
-      - desktop
+      - wayland
+      - fuse-support
+      - mount-observe
+      - raw-usb
+      - bluetooth-control
+      - bluez
+      - device-buttons
+      - hardware-observe
+      - location-observe
+      - udisks2
+      - io-ports-control
+      - media-hub
+      - mpris
+      - modem-manager
+      - network-control
+      - network-manager-observe
+      - network-status
+      - physical-memory-observe
+      - process-control
+      - serial-port
+      - shutdown
+      - system-trace
+      - upower-observe
 
 
 parts:
@@ -113,11 +140,11 @@ parts:
       - libxdmcp6
       - libxext6
       - libxrender1
+      - i3
     override-pull: |
-      snapcraftctl pull
-      last_committed_tag="$(git tag -l | grep -v v | sort -rV | head -n1)"
-      git checkout "${last_committed_tag}"
-      snapcraftctl set-version "${last_committed_tag}"
+       snapcraftctl pull
+       last_committed_tag="$(git tag -l | grep -v v | sort -rV | head -n1)"
+       snapcraftctl set-version "${last_committed_tag}"
     override-build: |
       cmake \
         -DCMAKE_CXX_COMPILER="c++" \

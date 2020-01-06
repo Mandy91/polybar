@@ -10,3 +10,6 @@
 *.snap
 parts
 .snapcraft
+.history
+prime
+stage
