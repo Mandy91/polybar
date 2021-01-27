@@ -1,10 +1,10 @@
 #pragma once
 
 #include "common.hpp"
-
 #include "components/ipc.hpp"
-#include "components/parser.hpp"
 #include "components/types.hpp"
+#include "tags/dispatch.hpp"
+#include "tags/types.hpp"
 #include "utils/functional.hpp"
 
 POLYBAR_NS
@@ -38,6 +38,7 @@ namespace signals {
 
       explicit value_signal(void* data) : m_ptr(data) {}
       explicit value_signal(ValueType&& data) : m_ptr(&data) {}
+      explicit value_signal(ValueType& data) : m_ptr(&data) {}
 
       virtual ~value_signal() {}
 
@@ -131,16 +132,16 @@ namespace signals {
   }  // namespace ui_tray
 
   namespace parser {
-    struct change_background : public detail::value_signal<change_background, unsigned int> {
+    struct change_background : public detail::value_signal<change_background, rgba> {
       using base_type::base_type;
     };
-    struct change_foreground : public detail::value_signal<change_foreground, unsigned int> {
+    struct change_foreground : public detail::value_signal<change_foreground, rgba> {
       using base_type::base_type;
     };
-    struct change_underline : public detail::value_signal<change_underline, unsigned int> {
+    struct change_underline : public detail::value_signal<change_underline, rgba> {
       using base_type::base_type;
     };
-    struct change_overline : public detail::value_signal<change_overline, unsigned int> {
+    struct change_overline : public detail::value_signal<change_overline, rgba> {
       using base_type::base_type;
     };
     struct change_font : public detail::value_signal<change_font, int> {
@@ -155,13 +156,13 @@ namespace signals {
     struct offset_pixel : public detail::value_signal<offset_pixel, int> {
       using base_type::base_type;
     };
-    struct attribute_set : public detail::value_signal<attribute_set, attribute> {
+    struct attribute_set : public detail::value_signal<attribute_set, tags::attribute> {
       using base_type::base_type;
     };
-    struct attribute_unset : public detail::value_signal<attribute_unset, attribute> {
+    struct attribute_unset : public detail::value_signal<attribute_unset, tags::attribute> {
       using base_type::base_type;
     };
-    struct attribute_toggle : public detail::value_signal<attribute_toggle, attribute> {
+    struct attribute_toggle : public detail::value_signal<attribute_toggle, tags::attribute> {
       using base_type::base_type;
     };
     struct action_begin : public detail::value_signal<action_begin, action> {
@@ -173,7 +174,7 @@ namespace signals {
     struct text : public detail::value_signal<text, string> {
       using base_type::base_type;
     };
-    struct control : public detail::value_signal<control, controltag> {
+    struct control : public detail::value_signal<control, tags::controltag> {
       using base_type::base_type;
     };
   }  // namespace parser

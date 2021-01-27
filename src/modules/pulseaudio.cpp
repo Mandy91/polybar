@@ -15,6 +15,12 @@ namespace modules {
 
   pulseaudio_module::pulseaudio_module(const bar_settings& bar, string name_)
       : event_module<pulseaudio_module>(bar, move(name_)) {
+    if (m_handle_events) {
+      m_router->register_action(EVENT_DEC, &pulseaudio_module::action_dec);
+      m_router->register_action(EVENT_INC, &pulseaudio_module::action_inc);
+      m_router->register_action(EVENT_TOGGLE, &pulseaudio_module::action_toggle);
+    }
+
     // Load configuration values
     m_interval = m_conf.get(name(), "interval", m_interval);
 
@@ -110,16 +116,16 @@ namespace modules {
       auto click_right = m_conf.get(name(), "click-right", ""s);
 
       if (!click_middle.empty()) {
-        m_builder->cmd(mousebtn::MIDDLE, click_middle);
+        m_builder->action(mousebtn::MIDDLE, click_middle);
       }
 
       if (!click_right.empty()) {
-        m_builder->cmd(mousebtn::RIGHT, click_right);
+        m_builder->action(mousebtn::RIGHT, click_right);
       }
 
-      m_builder->cmd(mousebtn::LEFT, EVENT_TOGGLE_MUTE);
-      m_builder->cmd(mousebtn::SCROLL_UP, EVENT_VOLUME_UP);
-      m_builder->cmd(mousebtn::SCROLL_DOWN, EVENT_VOLUME_DOWN);
+      m_builder->action(mousebtn::LEFT, *this, EVENT_TOGGLE, "");
+      m_builder->action(mousebtn::SCROLL_UP, *this, EVENT_INC, "");
+      m_builder->action(mousebtn::SCROLL_DOWN, *this, EVENT_DEC, "");
     }
 
     m_builder->append(output);
@@ -142,31 +148,16 @@ namespace modules {
     return true;
   }
 
-  bool pulseaudio_module::input(string&& cmd) {
-    if (!m_handle_events) {
-      return false;
-    } else if (cmd.compare(0, strlen(EVENT_PREFIX), EVENT_PREFIX) != 0) {
-      return false;
-    }
+  void pulseaudio_module::action_inc() {
+    m_pulseaudio->inc_volume(m_interval);
+  }
 
-    try {
-      if (m_pulseaudio && !m_pulseaudio->get_name().empty()) {
-        if (cmd.compare(0, strlen(EVENT_TOGGLE_MUTE), EVENT_TOGGLE_MUTE) == 0) {
-          m_pulseaudio->toggle_mute();
-        } else if (cmd.compare(0, strlen(EVENT_VOLUME_UP), EVENT_VOLUME_UP) == 0) {
-          // cap above 100 (~150)?
-          m_pulseaudio->inc_volume(m_interval);
-        } else if (cmd.compare(0, strlen(EVENT_VOLUME_DOWN), EVENT_VOLUME_DOWN) == 0) {
-          m_pulseaudio->inc_volume(-m_interval);
-        } else {
-          return false;
-        }
-      }
-    } catch (const exception& err) {
-      m_log.err("%s: Failed to handle command (%s)", name(), err.what());
-    }
+  void pulseaudio_module::action_dec() {
+    m_pulseaudio->inc_volume(-m_interval);
+  }
 
-    return true;
+  void pulseaudio_module::action_toggle() {
+    m_pulseaudio->toggle_mute();
   }
 }  // namespace modules
 

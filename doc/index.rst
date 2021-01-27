@@ -9,20 +9,29 @@ Polybar Documentation
 Welcome to the official polybar documentation.
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Content:
+
+   user/actions
 
 .. toctree::
    :maxdepth: 1
    :caption: Manual Pages:
 
    man/polybar.1
+   man/polybar.5
 
 .. toctree::
    :maxdepth: 1
    :caption: For Contributors:
 
    dev/packaging
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer Documentation:
+
+   dev/release-workflow
 
 Getting Help
 ============

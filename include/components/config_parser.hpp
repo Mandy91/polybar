@@ -6,8 +6,6 @@
 #include "components/config.hpp"
 #include "components/logger.hpp"
 #include "errors.hpp"
-#include "utils/file.hpp"
-#include "utils/string.hpp"
 
 POLYBAR_NS
 
@@ -41,7 +39,7 @@ class invalid_name_error : public syntax_error {
    * type is either Header or Key
    */
   invalid_name_error(const string& type, const string& name)
-      : syntax_error(type + " '" + name + "' contains forbidden characters.") {}
+      : syntax_error(type + " name '" + name + "' is empty or contains forbidden characters.") {}
 };
 
 /**
@@ -90,6 +88,11 @@ struct line_t {
 class config_parser {
  public:
   config_parser(const logger& logger, string&& file, string&& bar);
+  /**
+   * This prevents passing a temporary logger to the constructor because that would be UB, as the temporary would be
+   * destroyed once the constructor returns.
+   */
+  config_parser(logger&& logger, string&& file, string&& bar) = delete;
 
   /**
    * \brief Performs the parsing of the main config file m_file
@@ -186,6 +189,12 @@ class config_parser {
    * \throws syntax_error if the key contains forbidden characters
    */
   std::pair<string, string> parse_key(const string& line);
+
+  /**
+   * \brief Parses the given value, checks if the given value contains
+   *        one or more unescaped backslashes and logs an error if yes
+   */
+  string parse_escaped_value(string&& value, const string& key);
 
   /**
    * \brief Name of all the files the config includes values from

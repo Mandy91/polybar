@@ -1,7 +1,12 @@
+#include "components/config_parser.hpp"
+
 #include <algorithm>
+#include <cerrno>
+#include <cstring>
 #include <fstream>
 
-#include "components/config_parser.hpp"
+#include "utils/file.hpp"
+#include "utils/string.hpp"
 
 POLYBAR_NS
 
@@ -9,7 +14,7 @@ config_parser::config_parser(const logger& logger, string&& file, string&& bar)
     : m_log(logger), m_config(file_util::expand(file)), m_barname(move(bar)) {}
 
 config::make_type config_parser::parse() {
-  m_log.info("Parsing config file: %s", m_config);
+  m_log.notice("Parsing config file: %s", m_config);
 
   parse_file(m_config, {});
 
@@ -89,6 +94,14 @@ void config_parser::parse_file(const string& file, file_list path) {
     throw application_error("include-file: Dependency cycle detected:\n" + path_str);
   }
 
+  if (!file_util::exists(file)) {
+    throw application_error("Failed to open config file " + file + ": " + strerror(errno));
+  }
+
+  if (!file_util::is_file(file)) {
+    throw application_error("Config file " + file + " is not a file");
+  }
+
   m_log.trace("config_parser: Parsing %s", file);
 
   int file_index;
@@ -144,6 +157,13 @@ void config_parser::parse_file(const string& file, file_list path) {
 
     if (!line.is_header && line.key == "include-file") {
       parse_file(file_util::expand(line.value), path);
+    } else if (!line.is_header && line.key == "include-directory") {
+      const string expanded_path = file_util::expand(line.value);
+      vector<string> file_list = file_util::list_files(expanded_path);
+      sort(file_list.begin(), file_list.end());
+      for (const auto& filename : file_list) {
+        parse_file(expanded_path + "/" + filename, path);
+      }
     } else {
       m_lines.push_back(line);
     }
@@ -151,6 +171,11 @@ void config_parser::parse_file(const string& file, file_list path) {
 }
 
 line_t config_parser::parse_line(const string& line) {
+  if (string_util::contains(line, "\ufeff")) {
+    throw syntax_error(
+        "This config file uses UTF-8 with BOM, which is not supported. Please use plain UTF-8 without BOM.");
+  }
+
   string line_trimmed = string_util::trim(line, isspace);
   line_type type = get_line_type(line_trimmed);
 
@@ -193,12 +218,13 @@ line_type config_parser::get_line_type(const string& line) {
     case '#':
       return line_type::COMMENT;
 
-    default:
+    default: {
       if (string_util::contains(line, "=")) {
         return line_type::KEY;
       } else {
         return line_type::UNKNOWN;
       }
+    }
   }
 }
 
@@ -230,6 +256,8 @@ std::pair<string, string> config_parser::parse_key(const string& line) {
   if (!is_valid_name(key)) {
     throw invalid_name_error("Key", key);
   }
+
+  value = parse_escaped_value(move(value), key);
 
   /*
    * Only if the string is surrounded with double quotes, do we treat them
@@ -266,4 +294,25 @@ bool config_parser::is_valid_name(const string& name) {
   return true;
 }
 
+string config_parser::parse_escaped_value(string&& value, const string& key) {
+  string cfg_value = value;
+  bool log = false;
+  auto backslash_pos = value.find('\\');
+  while (backslash_pos != string::npos) {
+    if (backslash_pos == value.size() - 1 || value[backslash_pos + 1] != '\\') {
+      log = true;
+    } else {
+      value = value.replace(backslash_pos, 2, "\\");
+    }
+    backslash_pos = value.find('\\', backslash_pos + 1);
+  }
+  if (log) {
+    // TODO Log filename, and line number
+    m_log.err(
+        "Value '%s' of key '%s' contains one or more unescaped backslashes, please prepend them with the backslash "
+        "escape character.",
+        cfg_value, key);
+  }
+  return move(value);
+}
 POLYBAR_NS_END

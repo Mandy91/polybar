@@ -4,7 +4,7 @@
 #
 # This file does only contain a selection of the most common options. For a
 # full list see the documentation:
-# http://www.sphinx-doc.org/en/master/config
+# https://www.sphinx-doc.org/en/master/config
 
 # -- Path setup --------------------------------------------------------------
 
@@ -13,9 +13,25 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+from pathlib import Path
 import datetime
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+from typing import List
+from docutils.nodes import Node
+from sphinx.domains.changeset import VersionChange
+import packaging.version
+
+def get_version(root_path):
+  """
+  Reads the polybar version from the version.txt at the root of the repo.
+  """
+  path = Path(root_path) / "version.txt"
+  with open(path, "r") as f:
+    for line in f.readlines():
+      if not line.startswith("#"):
+        return packaging.version.parse(line)
+
+  raise RuntimeError("No version found in {}".format(path))
+
 
 
 # -- Project information -----------------------------------------------------
@@ -47,6 +63,11 @@ else:
   # In all other builds conf.py is configured with cmake and put into the
   # build folder.
   doc_path = '@doc_path@'
+
+# The version from the version.txt file. Since we are not always first
+# configured by cmake, we don't necessarily have access to the current version
+# number
+version_txt = get_version(Path(doc_path).absolute().parent)
 
 # -- General configuration ---------------------------------------------------
 
@@ -87,13 +108,17 @@ exclude_patterns = []
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
 
+highlight_language = 'none'
+
+smartquotes = False
+
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-if on_rtd:
+if on_rtd or os.environ.get('USE_RTD_THEME', '0') == '1':
   html_theme = 'sphinx_rtd_theme'
 else:
   html_theme = 'alabaster'
@@ -160,7 +185,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('man/polybar.1', 'polybar', 'A fast and easy-to-use tool status bar', [], 1)
+    ('man/polybar.1', 'polybar', 'A fast and easy-to-use tool status bar', [], 1),
+    ('man/polybar.5', 'polybar', 'configuration file for polybar(1)', [], 5)
 ]
 
 # -- Options for Texinfo output ----------------------------------------------
@@ -191,3 +217,24 @@ epub_title = project
 
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
+
+# The 'versionadded' and 'versionchanged' directives are overridden.
+suppress_warnings = ['app.add_directive']
+
+def setup(app):
+  app.add_directive('deprecated', VersionDirective)
+  app.add_directive('versionadded', VersionDirective)
+  app.add_directive('versionchanged', VersionDirective)
+
+class VersionDirective(VersionChange):
+  """
+  Overwrites the Sphinx directive for versionchanged, versionadded, and
+  deprecated and adds an unreleased tag to versions that are not yet released
+  """
+  def run(self) -> List[Node]:
+    directive_version = packaging.version.parse(self.arguments[0])
+
+    if directive_version > version_txt:
+      self.arguments[0] += " (unreleased)"
+
+    return super().run()
